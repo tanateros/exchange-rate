@@ -1,3 +1,11 @@
+# Install
+
+Configurate Nginx (example in file ./nginx.conf).
+
+```
+composer install
+```
+
 # Examples
 
 ```
@@ -18,3 +26,5 @@
 - Add yesterday rates
 
 - Add autotests in Behat
+
+- Improve README.md
