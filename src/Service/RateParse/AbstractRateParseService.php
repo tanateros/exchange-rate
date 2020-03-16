@@ -29,14 +29,19 @@ abstract class AbstractRateParseService
     {
         $this->from = new Currency($request->get('from', DEFAULT_CURRENCY));
         $this->to = new Currency($request->get('to', DEFAULT_CURRENCY));
-        $this->dateTime = $request->get('date') ?? new \DateTime('now');
+        $this->dateTime = $this->validateStringDate($request->get('date'))
+            ?? new \DateTime('now');
 
         return $this;
     }
 
     abstract public function getPrepareDate(): string;
 
+    abstract protected function validateStringDate(string $date): ?string;
+
     abstract public function parseRate(int $ttl): bool;
+
+    abstract public function gePrefixWrapCacheKey(): string;
 
     /**
      * @return Currency

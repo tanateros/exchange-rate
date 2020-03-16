@@ -6,12 +6,20 @@ use ExchangeRate\Container;
 use ExchangeRate\Exception\CurrencyNotFoundException;
 use ExchangeRate\Service\RateParse\AbstractRateParseService;
 
+/**
+ * Class ExchangeRateService
+ * @package ExchangeRate\Service
+ */
 class ExchangeRateService
 {
     const DECIMAL_LIMIT = 4;
 
     protected $rateParseService;
 
+    /**
+     * ExchangeRateService constructor.
+     * @param AbstractRateParseService $rateParseService
+     */
     public function __construct(AbstractRateParseService $rateParseService)
     {
         $this->rateParseService = $rateParseService;
@@ -22,7 +30,7 @@ class ExchangeRateService
      * @throws CurrencyNotFoundException
      * @throws \Phpfastcache\Exceptions\PhpfastcacheSimpleCacheException
      */
-    public function getRateToday(): float
+    public function getRate(): float
     {
         if ($this->rateParseService->getFrom()->equals($this->rateParseService->getTo())) {
             return 1.0;
@@ -35,57 +43,85 @@ class ExchangeRateService
         $fromName = $from->getName();
         $toName = $to->getName();
 
-        if ($cache->has(DEFAULT_CURRENCY) && (!$cache->has($fromName) || !$cache->has($toName))) {
+        if (
+            $this->hasRateInCache(DEFAULT_CURRENCY) &&
+            (!$this->hasRateInCache($fromName) || !$this->hasRateInCache($toName))
+        ) {
             throw new CurrencyNotFoundException();
         }
 
         if (
             !in_array($cross, [$fromName, $toName], true) &&
-            (!$cache->has($fromName) && !$cache->has($toName))
+            (!$this->hasRateInCache($fromName) && !$this->hasRateInCache($toName))
         ) {
-            $this->rateParseService->parseRate($this->genereteNewTtlValue());
+            $this->rateParseService->parseRate($this->genereteNewTtlValue(
+                $this->rateParseService->getDateTime()
+            ));
         }
 
         if (in_array($cross, [$fromName, $toName], true)) {
+            if (!$this->hasRateInCache($fromName) && !$this->hasRateInCache($toName)) {
+                $this->rateParseService->parseRate($this->genereteNewTtlValue(
+                    $this->rateParseService->getDateTime()
+                ));
+            }
+
             if ($cross === $toName) {
                 $toValue = 1;
-                $fromValue = $cache->get($fromName);
+                $fromValue = $this->getRateWithNominalFromCache($fromName);
             } else {
-                $toValue = $cache->get($toName);
+                $toValue = $this->getRateWithNominalFromCache($toName);
                 $fromValue = 1;
             }
 
             return $this->calculate($toValue, $fromValue);
         }
 
-        if (!$cache->has($fromName) || !$cache->has($toName)) {
+        if (!$this->hasRateInCache($fromName) || !$this->hasRateInCache($toName)) {
             throw new CurrencyNotFoundException();
         }
 
         if (in_array($cross, [$fromName, $toName], true)) {
-            return $this->calculate($cache->get($toName), $cache->get($fromName));
+            return $this->calculate(
+                $this->getRateWithNominalFromCache($toName),
+                $this->getRateWithNominalFromCache($fromName)
+            );
         }
 
         if ($cross === $toName) {
-            $toValue = $this->calculate(1, $cache->get($toName));
-            $fromValue = $cache->get($fromName);
+            $toValue = $this->calculate(1, $this->getRateWithNominalFromCache($toName));
+            $fromValue = $this->getRateWithNominalFromCache($fromName);
         } elseif ($cross === $fromName) {
             $toValue = $cache->get($toName);
-            $fromValue = $this->calculate(1, $cache->get($fromName));
+            $fromValue = $this->calculate(1, $this->getRateWithNominalFromCache($fromName));
         } else {
-            $toValue = $this->calculate(1, $cache->get($toName));
-            $fromValue = $this->calculate(1, $cache->get($fromName));
+            $toValue = $this->calculate(1, $this->getRateWithNominalFromCache($toName));
+            $fromValue = $this->calculate(1, $this->getRateWithNominalFromCache($fromName));
         }
 
         return $this->calculate($toValue, $fromValue);
     }
 
-    protected function genereteNewTtlValue(): int
+    /**
+     * @return float
+     * @throws CurrencyNotFoundException
+     */
+    public function getRateDiffYesterday(): float
     {
-        $now = new \DateTime('now');
-        $nextDay = (clone $now)->add(new \DateInterval("P1D"));
+        $this->rateParseService->setDateTimeInYesterday();
+
+        return $this->getRate();
+    }
+
+    /**
+     * @param \DateTime $date
+     * @return int
+     */
+    protected function genereteNewTtlValue(\DateTime $date): int
+    {
+        $nextDay = (clone $date)->add(new \DateInterval("P1D"));
         $prepareNextDay = new \DateTime($nextDay->format('Y-m-d') . ' 00:00:00');
-        $diff = $prepareNextDay->diff($now);
+        $diff = $prepareNextDay->diff($date);
 
         return ($diff->h * 60 * 60) + ($diff->i * 60) + $diff->s;
     }
@@ -98,5 +134,35 @@ class ExchangeRateService
     protected function calculate(float $from, float $to): float
     {
         return number_format($from / $to, self::DECIMAL_LIMIT);
+    }
+
+    /**
+     * @param string $key
+     * @return bool
+     */
+    protected function hasRateInCache(string $key): bool
+    {
+        return Container::getCacheService()->getAdapter()->has(
+            $this->rateParseService->gePrefixWrapCacheKey() . $key
+        );
+    }
+
+    /**
+     * @param string $key
+     * @return float|null
+     */
+    protected function getRateWithNominalFromCache(string $key): ?float
+    {
+        $cache = Container::getCacheService()->getAdapter()->get(
+            $this->rateParseService->gePrefixWrapCacheKey() . $key
+        );
+
+        if (!empty($cache)) {
+            $data = json_decode($cache, true);
+
+            return $data['value'] / $data['nominal'];
+        }
+
+        return null;
     }
 }

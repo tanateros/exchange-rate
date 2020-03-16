@@ -1,6 +1,14 @@
+# Required
+
+- PHP 7.0+
+
+- composer
+
+- nginx
+
 # Install
 
-Configurate Nginx (example in file ./nginx.conf).
+Configurate Nginx (example in file ./nginx.conf). Nginx config file in project dir.
 
 ```
 composer install
@@ -14,17 +22,12 @@ composer install
 ```
 /api/cb/get-rate?from=RUR&to=EUR&date=20/03/2020
 ```
+```
+/api/cb/get-rate?from=RUR&to=EUR&date=01/03/2020
+```
 
 # TODO
 
-- Need correction with nominals
-
-- Remove from cache old dates (caching only today)
-
 - Add API Doc
 
-- Add yesterday rates
-
 - Add autotests in Behat
-
-- Improve README.md

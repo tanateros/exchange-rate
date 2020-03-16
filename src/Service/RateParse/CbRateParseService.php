@@ -23,6 +23,29 @@ class CbRateParseService extends AbstractRateParseService
     }
 
     /**
+     * @return \DateTime
+     */
+    public function getDateTime(): \DateTime
+    {
+        $dateArr = explode('/', $this->getPrepareDate());
+        $date = $dateArr[2] . '-' . $dateArr[1] . '-' . $dateArr[0];
+
+        return $this->dateTime instanceof \DateTime
+            ? $this->dateTime
+            : new \DateTime($date);
+    }
+
+    /**
+     * @return $this
+     */
+    public function setDateTimeInYesterday(): self
+    {
+        $this->dateTime = $this->getDateTime()->sub(new \DateInterval("P1D"));
+
+        return $this;
+    }
+
+    /**
      * @return string
      */
     public function setPrepareYesterdayDate(): string
@@ -55,7 +78,10 @@ class CbRateParseService extends AbstractRateParseService
 
                     if (!empty($code) && !empty($value) && !empty($nominal)) {
                         Container::getCacheService()->getAdapter()->set(
-                            $code, $value / $nominal, $ttl + 60 * 60 * 24
+                            $this->gePrefixWrapCacheKey() . $code, json_encode([
+                                'value' => $value,
+                                'nominal' => $nominal,
+                            ]), $ttl + 60 * 60 * 24
                         );
                     }
                 }
@@ -65,5 +91,25 @@ class CbRateParseService extends AbstractRateParseService
         } catch (\Exception $e) {
             return false;
         }
+    }
+
+    /**
+     * @param string $date
+     * @return string|null
+     */
+    protected function validateStringDate(string $date): ?string
+    {
+        $pattern = '/^[\d]{1,2}\/[\d]{2}\/[\d]{4}/';
+        preg_match($pattern, $date, $matches, PREG_OFFSET_CAPTURE);
+
+        return $matches[0][0] ?? null;
+    }
+
+    /**
+     * @return string
+     */
+    public function gePrefixWrapCacheKey(): string
+    {
+        return str_replace('/', '.', $this->getPrepareDate()) . '-';
     }
 }

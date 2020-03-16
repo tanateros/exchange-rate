@@ -26,7 +26,8 @@ class DefaultController extends AbstractController
         $exchangeRateService = Container::getExchangeRateService($cbRateService);
 
         return json_encode([
-            'today' => $exchangeRateService->getRateToday(),
+            'today' => $exchangeRateService->getRate(),
+            'diffYesterday' => $exchangeRateService->getRateDiffYesterday(),
         ]);
     }
 }
