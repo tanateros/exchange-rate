@@ -19,7 +19,7 @@ composer install
 For crypto currency history (from project directory):
 
 ```
-(crontab -l 2>/dev/null || true; echo "*/1 * * * * sudo -u www-data `pwd`/cli/parseCrypto.php") | crontab -
+(crontab -l 2>/dev/null || true; echo "*/15 * * * * sudo -u www-data `pwd`/cli/parseCrypto.php") | crontab -
 ```
 
 # Examples CB
