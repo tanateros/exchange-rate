@@ -2,10 +2,10 @@
 
 namespace ExchangeRate\Controller;
 
+use ExchangeRate\Component\Response\JsonResponse;
 use ExchangeRate\Container;
 use ExchangeRate\Service\RateParse\CbRateParseService;
-use Pecee\SimpleRouter\SimpleRouter;
-use Symfony\Component\HttpFoundation\JsonResponse;
+use ExchangeRate\Service\RateParse\CryptoRateParseService;
 
 class DefaultController extends AbstractController
 {
@@ -13,15 +13,28 @@ class DefaultController extends AbstractController
      * @return string
      * @throws \ExchangeRate\Exception\CurrencyNotFoundException
      */
-    public function getCbRate(): string
+    public function getCbRate(): JsonResponse
     {
-        $cbRateService = new CbRateParseService(DEFAULT_CURRENCY);
-        $cbRateService->handleRequest($this->request);
-        $exchangeRateService = Container::getExchangeRateService($cbRateService);
+        $rateService = new CbRateParseService(DEFAULT_CURRENCY);
+        $rateService->handleRequest($this->request);
+        $exchangeRateService = Container::getExchangeRateService($rateService);
 
-        return json_encode([
+        return new JsonResponse([
             'today' => $exchangeRateService->getRate(),
             'diffYesterday' => $exchangeRateService->getRateDiffYesterday(),
         ]);
+    }
+
+    /**
+     * @return JsonResponse
+     * @throws \ExchangeRate\Exception\DiffDateTimeException
+     */
+    public function getCryptoRates(): JsonResponse
+    {
+        $rateService = new CryptoRateParseService(DEFAULT_CRYPTO_CURRENCY);
+        $rateService->handleRequest($this->request);
+        $exchangeRateService = Container::getExchangeRateService($rateService);
+
+        return new JsonResponse($exchangeRateService->getCryptoRates());
     }
 }

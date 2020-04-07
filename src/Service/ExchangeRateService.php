@@ -4,7 +4,9 @@ namespace ExchangeRate\Service;
 
 use ExchangeRate\Container;
 use ExchangeRate\Exception\CurrencyNotFoundException;
+use ExchangeRate\Exception\DiffDateTimeException;
 use ExchangeRate\Service\RateParse\AbstractRateParseService;
+use ExchangeRate\Service\RateParse\CryptoRateParseService;
 
 /**
  * Class ExchangeRateService
@@ -100,6 +102,48 @@ class ExchangeRateService
         }
 
         return $this->calculate($toValue, $fromValue);
+    }
+
+    /**
+     * @return array
+     * @throws DiffDateTimeException
+     */
+    public function getCryptoRates(): array
+    {
+        $rates = [];
+        $start = $this->rateParseService->getDateTimeByRequest(
+            $this->rateParseService->startDateTime
+        );
+        $end = $this->rateParseService->getDateTimeByRequest(
+            $this->rateParseService->endDateTime
+        );
+        $now = new \DateTime('now');
+        $this->rateParseService->correctionTime($start);
+        $this->rateParseService->correctionTime($end);
+        $this->rateParseService->correctionTime($now);
+        $nextYearTime = (clone $now)->add(new \DateInterval('P1Y'))->getTimestamp() - $now->getTimestamp();
+
+        if ($end < $start) {
+            throw new DiffDateTimeException();
+        }
+
+        while ($start <= $end && $start <= $now) {
+            $cacheKey = $this->rateParseService->getCacheKeyByDateTime($start);
+
+            if ($start->format('YmdHi') === $now->format('YmdHi')
+                && !Container::getCacheService()->getAdapter()->has($cacheKey)
+            ) {
+                $this->rateParseService->parseRate($nextYearTime, $cacheKey);
+            }
+
+            if (Container::getCacheService()->getAdapter()->has($cacheKey)) {
+                $rates[$cacheKey] = Container::getCacheService()->getAdapter()->get($cacheKey);
+            }
+
+            $start->add(new \DateInterval('PT' . CryptoRateParseService::TIME_DIFF_STEP . 'M'));
+        }
+
+        return $rates;
     }
 
     /**

@@ -25,7 +25,7 @@ abstract class AbstractRateParseService
      * @param Request $request
      * @return $this
      */
-    public function handleRequest(Request $request): self
+    public function handleRequest(Request $request)
     {
         $this->from = new Currency($request->get('from', DEFAULT_CURRENCY));
         $this->to = new Currency($request->get('to', DEFAULT_CURRENCY));
@@ -35,13 +35,9 @@ abstract class AbstractRateParseService
         return $this;
     }
 
-    abstract public function getPrepareDate(): string;
-
     abstract protected function validateStringDate(string $date): ?string;
 
     abstract public function parseRate(int $ttl): bool;
-
-    abstract public function gePrefixWrapCacheKey(): string;
 
     /**
      * @return Currency

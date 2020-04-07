@@ -7,4 +7,10 @@ $routes = [
         'action' => 'getCbRate',
         'name' => 'getCbRate',
     ],
+    '/api/crypto/get-rates' => [
+        'method' => 'get',
+        'controller' => 'ExchangeRate\\Controller\\DefaultController',
+        'action' => 'getCryptoRates',
+        'name' => 'getCryptoRates',
+    ],
 ];
